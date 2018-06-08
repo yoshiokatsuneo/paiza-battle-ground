@@ -9,103 +9,72 @@ var movement = {
   left: false,
   right: false
 }
-document.addEventListener('keydown', function(event) {
-    event.preventDefault();
-    event.stopPropagation();
-  var c = String.fromCharCode(event.keyCode);
-  console.log('keydown', event.key, event.keyCode, c);
-    switch(event.key){
-        case ' ':
-            socket.emit('shoot');
-            break;
-        case 'ArrowDown':
-            movement.down = true;
-            break;
-        case 'ArrowUp':
-            movement.up = true;
-            break;
-        case 'ArrowLeft':
-            movement.left = true;
-            break;
-        case 'ArrowRight':
-            movement.right = true;
-            break;
+
+let currentKeys = [];
+$(document).keydown((event) => {
+    console.log('keydown', event.key, event);
+    currentKeys.push(event.key);
+    if(event.key === ' '){
+        socket.emit('shoot');
     }
-  if(c===' '){
-      console.log('shoot');
-      socket.emit('shoot');
-      return 0;
-  }
-
-  switch (event.keyCode) {
-    case 65: // A
-      movement.left = true;
-      break;
-    case 87: // W
-      movement.up = true;
-      break;
-    case 68: // D
-      movement.right = true;
-      break;
-    case 83: // S
-      movement.down = true;
-      break;
-  }
 });
-document.addEventListener('keyup', function(event) {
-    event.preventDefault();
-    event.stopPropagation();
-
-      movement.left = false;
-      movement.right = false;
-      movement.up = false;
-      movement.down = false;
-
-
-  switch (event.keyCode) {
-    case 65: // A
-      movement.left = false;
-      break;
-    case 87: // W
-      movement.up = false;
-      break;
-    case 68: // D
-      movement.right = false;
-      break;
-    case 83: // S
-      movement.down = false;
-      break;
-  }
+$(document).keyup((event) => {
+    console.log('keyup', event.key, event);
+    currentKeys = currentKeys.filter((key) => key !== event.key);
 });
+
+const KeyToEvent = {
+    'ArrowUp': 'up',
+    'ArrowDown': 'down',
+    'ArrowLeft': 'left',
+    'ArrowRight': 'right',
+}
+
 socket.emit('new player');
 setInterval(function() {
+    const movement = {};
+    currentKeys.forEach((key) => {
+        const event = KeyToEvent[key];
+        movement[event] = true;
+    })
   socket.emit('movement', movement);
-}, 1000 / 60);
+}, 1000 / 10);
 
 
 
 
 var canvas = document.getElementById('canvas');
-canvas.width = 800;
-canvas.height = 600;
+canvas.width = 1000;
+canvas.height = 1000;
 var context = canvas.getContext('2d');
 var img = document.querySelector("#player-image");
 socket.on('state', function(players, bullets) {
-  context.clearRect(0, 0, 800, 600);
+  context.clearRect(0, 0, 1000, 1000);
   context.fillStyle = 'green';
+  context.lineWidth = 10;
+  context.rect(0, 0, 1000, 1000);
+  context.stroke();
   for (var id in players) {
     var player = players[id];
     context.beginPath();
     context.arc(player.x, player.y, 10, 0, 2 * Math.PI);
-    context.drawImage(img, player.x, player.y);
-    context.fill();
+    context.save();
+    context.translate(player.x, player.y);
+    context.fillText(`(${parseInt(player.x)}, ${parseInt(player.y)})`, img.width/2, img.height/2)
+    context.fillText('❤️'.repeat(player.health), -img.width/2, img.height/2)
+    context.rotate(player.angle);
+    context.drawImage(img, 0, 0, img.width, img.height, -player.width/2, -player.height/2, player.width, player.height);
+
+    context.drawImage(img, -img.width/2, -img.height/2);
+    context.restore();
+    // context.fill();
   }
   for (var id in bullets) {
     var bullet = bullets[id];
     context.beginPath();
     context.arc(bullet.x, bullet.y, 2, 0, 2 * Math.PI);
     // context.drawImage(img, bullet.x, bullet.y);
-    context.drawImage(img, 0, 0, img.width, img.height, bullet.x, bullet.y, 30, 30);
+    context.drawImage(img, 0, 0, img.width, img.height, bullet.x-bullet.width/2, bullet.y-bullet.height/2, bullet.width, bullet.height);
     context.fill();
   }
 });
