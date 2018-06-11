@@ -29,8 +29,39 @@ class GameObject{
         this.angle = obj.angle;
     }
     move(distance){
+        // console.log('moving...start', distance, this.x, this.y);
+        const oldX = this.x, oldY = this.y;
+        
         this.x += distance * Math.cos(this.angle);
         this.y += distance * Math.sin(this.angle);
+        
+        let collision = false;
+        if(this.x < 0 || this.x >= FIELD_WIDTH || this.y < 0 || this.y >= FIELD_HEIGHT){
+            collision = true;
+        }
+        
+        /*
+        let onBoard = true;
+        if(this.x < 0){this.x = 0; onBoard = false;}
+        if(this.y < 0){this.y = 0; onBoard = false;}
+        if(this.x >= FIELD_WIDTH ){this.x = FIELD_WIDTH -1; onBoard = false;}
+        if(this.y >= FIELD_WIDTH ){this.y = FIELD_HEIGHT -1; onBoard = false;}
+        */
+
+        
+        walls.forEach((wall) => {
+            if(this.intersect(wall)){
+                console.log('Wall collision!', wall.x, wall.y, wall.width, wall.height, this.x, this.y, this.width, this.height);
+                collision = true;
+            }
+        });
+        
+        if(collision){
+            this.x = oldX; this.y = oldY;
+        }
+        // console.log('moving...end', distance, this.x, this.y);
+        
+        return !collision;
     }
     isOut(){
         return this.x < 0 || FIELD_WIDTH <= this.x
@@ -43,18 +74,19 @@ class GameObject{
             this.y - this.height/2, obj.y + obj.height/2,
             this.y + this.height/2, obj.y - obj.height/2,
             ); */
-        return (this.x - this.width/2 <= obj.x + obj.width/2) &&
-            (this.x + this.width/2 >= obj.x - obj.width/2) &&
-            (this.y - this.height/2 <= obj.y + obj.height/2) &&
-            (this.y + this.height/2 >= obj.y - obj.height/2);
+        return (this.x <= obj.x + obj.width) &&
+            (this.x + this.width >= obj.x) &&
+            (this.y <= obj.y + obj.height) &&
+            (this.y + this.height >= obj.y);
     }
     toJSON(){
-        return {x: this.x, y: this.y, angle: this.angle};
+        return {x: this.x, y: this.y, width: this.width, height: this.height, angle: this.angle};
     }
 };
 class Player extends GameObject{
     constructor(obj){
         super(obj);
+        this.id = obj.id;
         this.width = 80;
         this.height = 80;
         this.health = 10;
@@ -64,20 +96,32 @@ class Player extends GameObject{
         if(this.bullets.length >= 3){
             return;
         }
-        const bullet = new Bullet(this);
+        const bullet = new Bullet({
+            x: this.x + this.width/2,
+            y: this.y + this.height/2,
+            angle: this.angle,
+            player: this,
+        });
         this.bullets.push(bullet);
         bullets.push(bullet);
     }
+    damage(){
+        this.health -= 1;
+        if(this.health === 0){
+            delete players[this.id];
+            io.to(this.id).emit('dead');
+        }
+    }
     toJSON(){
-        return Object.assign(super.toJSON(), {health: this.health});
+        return Object.assign(super.toJSON(), {health: this.health, id: this.id});
     }
 };
 class Bullet extends GameObject{
     constructor(obj){
         super(obj);
-        this.width = 30;
-        this.height = 30;
-        this.player = obj;
+        this.width = 60;
+        this.height = 60;
+        this.player = obj.player;
     }
     remove(){
         this.player.bullets.splice(this.player.bullets.indexOf(this), 1);
@@ -88,31 +132,50 @@ class BotPlayer extends Player{
     constructor(obj){
         super(obj);
         setInterval(() => {
-            this.move(10);
-            if(this.x < 0 || this.x >= FIELD_WIDTH){
+            if(! this.move(10)){
+                this.angle = Math.random() * Math.PI * 2;
+            }
+            /*
+            if(this.x <= 0 || this.x >= FIELD_WIDTH-1){
                 this.angle = Math.PI/2 - (this.angle - Math.PI/2);
             }
-            if(this.y < 0 || this.y >= FIELD_WIDTH){
+            if(this.y <= 0 || this.y >= FIELD_HEIGHT-1){
                 this.angle = -this.angle;
             }
+            */
             if(Math.random()<0.1){
                 this.shoot();
             }
         }, 100);
     }
 }
+class Wall extends GameObject{
+    
+}
 
 var players = {};
 var bullets = [];
+var walls = [];
+
+for(let i=0; i<3; i++){
+    walls.push(new Wall({
+            x: Math.random() * FIELD_WIDTH,
+            y: Math.random() * FIELD_HEIGHT,
+            width: 200,
+            height: 50,
+    }));
+}
 
 players.bot1 = new BotPlayer({
+        id: 'bot1',
         x: Math.random() * FIELD_WIDTH,
         y: Math.random() * FIELD_HEIGHT,
-        angle: Math.random() * Math.PI,
+        angle: Math.random() * 2 * Math.PI,
 });
 
 io.on('connection', function(socket) {
     const player = new Player({
+        id: socket.id,
         x: Math.random() * FIELD_WIDTH,
         y: Math.random() * FIELD_HEIGHT,
         angle: 0,
@@ -143,29 +206,49 @@ io.on('connection', function(socket) {
       delete players[socket.id];
   });
 });
+/*
 setInterval(function() {
   io.sockets.emit('state', players, bullets);
 }, 100);
+*/
 
 setInterval(function() {
+    
+    
     bullets.forEach((bullet) =>{
         // console.log('bullet:', JSON.stringify(bullet));
-        bullet.move(20);
+        if(! bullet.move(20)){
+            bullet.remove();
+            return;
+        }
         Object.values(players).forEach((player) => {
            if(bullet.intersect(player)){
-               console.log('hit!!');
+               // console.log('hit!!');
                if(player !== bullet.player){
                    console.log('hit2!!');
-                   player.health -= 1;
+                   player.damage();
                    bullet.remove();
                }
            } 
         });
+        
+        Object.values(walls).forEach((wall) => {
+           if(bullet.intersect(wall)){
+               bullet.remove();
+           }
+        });
+        
     });
+    /*
     bullets.forEach((bullet) => {
         if(bullet.isOut()){
             bullet.remove();
         }
     });
+    */
+
+  io.sockets.emit('state', players, bullets, walls);
+    
+    
 }, 100);
 
