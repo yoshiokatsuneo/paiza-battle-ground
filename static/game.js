@@ -1,3 +1,12 @@
+
+function gameStart(){
+    socket.emit('game-start');
+    $("#game-over").hide();
+    $("#start-button").hide();
+}
+
+$("#start-button").on('click', gameStart);
+
 var socket = io();
 socket.on('message', function(data) {
   console.log(data);
@@ -30,7 +39,8 @@ const KeyToEvent = {
     'ArrowRight': 'right',
 }
 
-socket.emit('new player');
+gameStart();
+
 setInterval(function() {
     const movement = {};
     currentKeys.forEach((key) => {
@@ -39,8 +49,6 @@ setInterval(function() {
     })
   socket.emit('movement', movement);
 }, 1000 / 30);
-
-
 
 
 var canvas = document.getElementById('canvas');
@@ -86,6 +94,7 @@ context.fillStyle = 'green';
         context.save();
         context.font = '30px Bold Arial';
         context.fillText('You!', player.x - 20, player.y - 20);
+        context.fillText(player.point + ' point', 20, 40);
         context.restore();
     }
 
@@ -110,5 +119,7 @@ context.fillStyle = 'green';
 
 socket.on('dead', () => {
     alert('You are dead!');
+    $("#game-over").show();
+    $("#start-button").show();
 });
 
