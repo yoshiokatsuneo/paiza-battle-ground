@@ -128,13 +128,13 @@ class BotPlayer extends Player{
     constructor(obj){
         super(obj);
         this.timer = setInterval(() => {
-            if(! this.move(10)){
+            if(! this.move(4)){
                 this.angle = Math.random() * Math.PI * 2;
             }
-            if(Math.random()<0.1){
+            if(Math.random()<0.03){
                 this.shoot();
             }
-        }, 100);
+        }, 1000/30);
     }
     remove(){
         super.remove();
@@ -172,24 +172,29 @@ io.on('connection', function(socket) {
     players[socket.id] = player;
   });
   socket.on('movement', function(data) {
-    var player = players[socket.id] || {};
+    var player = players[socket.id];
+    if(!player){
+        return;
+    }
     if (data.left) {
         player.angle -= 0.1;
     }
     if (data.up) {
-        player.move(10);
+        player.move(5);
     }
     if (data.right) {
         player.angle += 0.1;
     }
     if (data.down) {
-        player.move(-10);
+        player.move(-5);
     }
   });
   socket.on('shoot', function(){
       console.log('shoot');
      var player = players[socket.id];
-     player.shoot();
+     if(player){
+         player.shoot();
+     }
   });
   socket.on('disconnect', () => {
       delete players[socket.id];
@@ -198,7 +203,7 @@ io.on('connection', function(socket) {
 
 setInterval(function() {
     bullets.forEach((bullet) =>{
-        if(! bullet.move(20)){
+        if(! bullet.move(10)){
             bullet.remove();
             return;
         }
@@ -218,5 +223,5 @@ setInterval(function() {
         });
     });
     io.sockets.emit('state', players, bullets, walls);
-}, 100);
+}, 1000/30);
 
