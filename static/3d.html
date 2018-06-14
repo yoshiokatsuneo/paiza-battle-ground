@@ -1,0 +1,31 @@
+<html>
+  <head>
+    <title>A Multiplayer Game</title>
+    <style>
+      canvas {
+        width: 100%;
+        height: 100%;
+        /* border: 5px solid black; */
+        object-fit: contain;
+      }
+      body {
+          margin: 0;
+      }
+    </style>
+    <script src="/socket.io/socket.io.js"></script>
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.3.1/jquery.min.js"></script>
+</head>
+  <body style="display: flex; flex-direction: column; width: 100%; height: 100%;">
+    <div>Paiza Battle Field</div>
+    <div style="flex: 1 1; position: relative; overflow:hidden;">
+        <!--
+        <div id="start-button" style="width:100%; height:100%; display: flex; align-items: center; text-align: center; position:absolute; z-index:1;"><div style="text-align: center; width: 100%;"><button style="font-size: xx-large;">Start</button></div></div>
+        <div id="game-over" style="width:100%;top:100px;text-align:center;position:absolute;font-size:xx-large;color: red;">Game Over</div>
+        -->
+        <canvas id="canvas"></canvas>
+    </div>
+    <img id="player-image" src="/static/bg_ttl_01.gif" style="display: none;">
+  </body>
+  <script src="/static/three.js"></script>
+  <script src="/static/game-3d.js"></script>
+</html>
