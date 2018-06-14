@@ -1,23 +1,19 @@
 'use strict';
 
-// Dependencies
-var express = require('express');
-var http = require('http');
-var path = require('path');
-var socketIO = require('socket.io');
-var app = express();
-var server = http.Server(app);
-var io = socketIO(server);
-app.set('port', 5000);
+const express = require('express');
+const http = require('http');
+const path = require('path');
+const socketIO = require('socket.io');
+const app = express();
+const server = http.Server(app);
+const io = socketIO(server);
+
 app.use('/static', express.static(__dirname + '/static'));
 
-// Routing
 app.get('/', function(request, response) {
   response.sendFile(path.join(__dirname, 'index.html'));
 });
 
-
-// Starts the server.
 server.listen(5000, function() {
   console.log('Starting server on port 5000');
 });
@@ -78,6 +74,7 @@ class Player extends GameObject{
         this.health = this.maxHealth = 10;
         this.bullets = [];
         this.point = 0;
+        this.movement = {};
 
         do{
             this.x = Math.random() * (FIELD_WIDTH - this.width);
@@ -115,8 +112,8 @@ class Player extends GameObject{
 class Bullet extends GameObject{
     constructor(obj){
         super(obj);
-        this.width = 60;
-        this.height = 60;
+        this.width = 15;
+        this.height = 15;
         this.player = obj.player;
     }
     remove(){
@@ -165,43 +162,45 @@ players.bot1 = new BotPlayer({
 });
 
 io.on('connection', function(socket) {
+    let player = null;
   socket.on('game-start', () => {
-    const player = new Player({
+    player = new Player({
         id: socket.id,
     });
     players[socket.id] = player;
   });
-  socket.on('movement', function(data) {
-    var player = players[socket.id];
-    if(!player){
-        return;
-    }
-    if (data.left) {
-        player.angle -= 0.1;
-    }
-    if (data.up) {
-        player.move(5);
-    }
-    if (data.right) {
-        player.angle += 0.1;
-    }
-    if (data.down) {
-        player.move(-5);
-    }
+  socket.on('movement', function(movement) {
+      if(!player){return;}
+      player.movement = movement;
   });
   socket.on('shoot', function(){
       console.log('shoot');
-     var player = players[socket.id];
-     if(player){
-         player.shoot();
-     }
+      if(!player){return;}
+    player.shoot();
   });
   socket.on('disconnect', () => {
+      if(!player){return;}
       delete players[socket.id];
+      player = null;
   });
 });
 
 setInterval(function() {
+    Object.values(players).forEach((player) => {
+        const movement = player.movement;
+        if(movement.forward){
+            player.move(5);
+        }
+        if(movement.back){
+            player.move(-5);
+        }
+        if(movement.left){
+            player.angle -= 0.1;
+        }
+        if(movement.right){
+            player.angle += 0.1;
+        }
+    });
     bullets.forEach((bullet) =>{
         if(! bullet.move(10)){
             bullet.remove();
@@ -216,7 +215,7 @@ setInterval(function() {
                }
            } 
         });
-        Object.values(walls).forEach((wall) => {
+        walls.forEach((wall) => {
            if(bullet.intersect(wall)){
                bullet.remove();
            }

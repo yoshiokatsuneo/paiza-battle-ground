@@ -13,34 +13,30 @@ function gameStart(){
 }
 $("#start-button").on('click', gameStart);
 
-let currentKeys = [];
+const KeyToCommand = {
+    'ArrowUp': 'forward',
+    'ArrowDown': 'back',
+    'ArrowLeft': 'left',
+    'ArrowRight': 'right',
+};
+const movement = {};
 $(document).keydown((event) => {
-    currentKeys.push(event.key);
+    const command = KeyToCommand[event.key];
+    if(command){
+        movement[command] = true;
+        socket.emit('movement', movement);
+    }
     if(event.key === ' '){
         socket.emit('shoot');
     }
 });
 $(document).keyup((event) => {
-    currentKeys = currentKeys.filter((key) => key !== event.key);
-});
-
-
-
-setInterval(function() {
-    const movement = {};
-    const KeyToEvent = {
-        'ArrowUp': 'up',
-        'ArrowDown': 'down',
-        'ArrowLeft': 'left',
-        'ArrowRight': 'right',
+    const command = KeyToCommand[event.key];
+    if(command){
+        movement[command] = false;
+        socket.emit('movement', movement);
     }
-    currentKeys.forEach((key) => {
-        const event = KeyToEvent[key];
-        movement[event] = true;
-    });
-    socket.emit('movement', movement);
-}, 1000 / 30);
-
+});
 
 socket.on('state', function(players, bullets, walls) {
     context.clearRect(0, 0, canvas.width, canvas.height);
@@ -49,37 +45,30 @@ socket.on('state', function(players, bullets, walls) {
     context.beginPath();
     context.rect(0, 0, canvas.width, canvas.height);
     context.stroke();
-  
-  for (var id in players) {
-    var player = players[id];
 
-    context.save();
-    context.font = '10px Bold Arial';
-    context.fillStyle = "gray";
-    context.fillText('♥'.repeat(player.maxHealth), player.x, player.y + player.height + 10);
-    context.fillStyle = "red";
-    context.fillText('♥'.repeat(player.health), player.x, player.y + player.height + 10);
-    
-    context.translate(player.x + player.width/2, player.y + player.height/2);
-    context.rotate(player.angle);
-    context.drawImage(img, 0, 0, img.width, img.height, -player.width/2, -player.height/2, player.width, player.height);
-    context.restore();
-
-    
-    if(id === socket.id){
+    Object.values(players).forEach((player) => {
         context.save();
-        context.font = '30px Bold Arial';
-        context.fillText('You', player.x, player.y - 20);
-        context.fillText(player.point + ' point', 20, 40);
+        context.font = '10px Bold Arial';
+        context.fillStyle = "gray";
+        context.fillText('♥'.repeat(player.maxHealth), player.x, player.y + player.height + 10);
+        context.fillStyle = "red";
+        context.fillText('♥'.repeat(player.health), player.x, player.y + player.height + 10);
+        context.translate(player.x + player.width/2, player.y + player.height/2);
+        context.rotate(player.angle);
+        context.drawImage(img, 0, 0, img.width, img.height, -player.width/2, -player.height/2, player.width, player.height);
         context.restore();
-    }
-
-
-  }
-
+        
+        if(player.id === socket.id){
+            context.save();
+            context.font = '30px Bold Arial';
+            context.fillText('You', player.x, player.y - 20);
+            context.fillText(player.point + ' point', 20, 40);
+            context.restore();
+        }
+    });
     bullets.forEach((bullet) => {
         context.beginPath();
-        context.arc(bullet.x, bullet.y, 4, 0, 2 * Math.PI);
+        context.arc(bullet.x, bullet.y, bullet.width/2, 0, 2 * Math.PI);
         context.stroke();
     });
     walls.forEach((wall) => {
@@ -93,4 +82,6 @@ socket.on('dead', () => {
     $("#start-button").show();
 });
 
-gameStart();
+socket.on('connect', () => {
+    gameStart();
+});
