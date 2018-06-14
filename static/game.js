@@ -1,3 +1,5 @@
+'use strict';
+
 const socket = io();
 const canvas = document.getElementById('canvas');
 canvas.width = 1000;
