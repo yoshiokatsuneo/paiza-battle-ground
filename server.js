@@ -8,19 +8,11 @@ const app = express();
 const server = http.Server(app);
 const io = socketIO(server);
 
-app.use('/static', express.static(__dirname + '/static'));
-
-app.get('/', function(request, response) {
-  response.sendFile(path.join(__dirname, 'index.html'));
-});
-
-server.listen(5000, function() {
-  console.log('Starting server on port 5000');
-});
 
 const FIELD_WIDTH = 1000, FIELD_HEIGHT = 1000;
 class GameObject{
-    constructor(obj){
+    constructor(obj={}){
+        this.id = GameObject.idCounter++;
         this.x = obj.x;
         this.y = obj.y;
         this.width = obj.width;
@@ -37,20 +29,17 @@ class GameObject{
         if(this.x < 0 || this.x + this.width >= FIELD_WIDTH || this.y < 0 || this.y + this.height >= FIELD_HEIGHT){
             collision = true;
         }
-        
         if(this.intersectWalls()){
             collision = true;
-        }        
-
+        }
         if(collision){
             this.x = oldX; this.y = oldY;
         }
         return !collision;
     }
     intersectWalls(){
-        return walls.some((wall) => {
+        return Object.values(walls).some((wall) => {
             if(this.intersect(wall)){
-                // console.log('Wall collision!', wall.x, wall.y, wall.width, wall.height, this.x, this.y, this.width, this.height);
                 return true;
             }
         });
@@ -62,17 +51,19 @@ class GameObject{
             (this.y + this.height >= obj.y);
     }
     toJSON(){
-        return {x: this.x, y: this.y, width: this.width, height: this.height, angle: this.angle};
+        return {id: this.id, x: this.x, y: this.y, width: this.width, height: this.height, angle: this.angle};
     }
 };
+GameObject.idCounter=1000;
+
 class Player extends GameObject{
-    constructor(obj){
+    constructor(obj={}){
         super(obj);
-        this.id = obj.id;
+        this.socketId = obj.socketId;
         this.width = 80;
         this.height = 80;
         this.health = this.maxHealth = 10;
-        this.bullets = [];
+        this.bullets = {};
         this.point = 0;
         this.movement = {};
 
@@ -83,7 +74,7 @@ class Player extends GameObject{
         }while(this.intersectWalls());
     }
     shoot(){
-        if(this.bullets.length >= 3){
+        if(Object.keys(this.bullets).length >= 3){
             return;
         }
         const bullet = new Bullet({
@@ -92,8 +83,9 @@ class Player extends GameObject{
             angle: this.angle,
             player: this,
         });
-        this.bullets.push(bullet);
-        bullets.push(bullet);
+        bullet.move(this.width/2);
+        this.bullets[bullet.id] = bullet;
+        bullets[bullet.id] = bullet;
     }
     damage(){
         this.health --;
@@ -106,7 +98,7 @@ class Player extends GameObject{
         io.to(this.id).emit('dead');
     }
     toJSON(){
-        return Object.assign(super.toJSON(), {health: this.health, maxHealth: this.maxHealth, id: this.id, point: this.point});
+        return Object.assign(super.toJSON(), {health: this.health, maxHealth: this.maxHealth, socketId: this.socketId, point: this.point});
     }
 };
 class Bullet extends GameObject{
@@ -117,8 +109,8 @@ class Bullet extends GameObject{
         this.player = obj.player;
     }
     remove(){
-        this.player.bullets.splice(this.player.bullets.indexOf(this), 1);
-        bullets.splice(bullets.indexOf(this), 1);
+        delete this.player.bullets[this.id];
+        delete bullets[this.id];
     }
 };
 class BotPlayer extends Player{
@@ -137,7 +129,8 @@ class BotPlayer extends Player{
         super.remove();
         clearInterval(this.timer);
         setTimeout(() => {
-            players[this.id] = new BotPlayer({id: this.id});
+            const bot = new BotPlayer();
+            players[bot.id] = bot;
         }, 3000);
     }
 };
@@ -145,44 +138,44 @@ class Wall extends GameObject{
 };
 
 let players = {};
-let bullets = [];
-let walls = [];
+let bullets = {};
+let walls = {};
 
 for(let i=0; i<3; i++){
-    walls.push(new Wall({
+    const wall = new Wall({
             x: Math.random() * FIELD_WIDTH,
             y: Math.random() * FIELD_HEIGHT,
             width: 200,
             height: 50,
-    }));
+    });
+    walls[wall.id] = wall;
 }
 
-players.bot1 = new BotPlayer({
-        id: 'bot1',
-});
+const bot = new BotPlayer();
+players[bot.id] = bot;
 
 io.on('connection', function(socket) {
-    let player = null;
-  socket.on('game-start', () => {
-    player = new Player({
-        id: socket.id,
+let player = null;
+    socket.on('game-start', () => {
+        player = new Player({
+            socketId: socket.id,
+        });
+        players[player.id] = player;
     });
-    players[socket.id] = player;
-  });
-  socket.on('movement', function(movement) {
-      if(!player){return;}
-      player.movement = movement;
-  });
-  socket.on('shoot', function(){
-      console.log('shoot');
-      if(!player){return;}
-    player.shoot();
-  });
-  socket.on('disconnect', () => {
-      if(!player){return;}
-      delete players[socket.id];
-      player = null;
-  });
+    socket.on('movement', function(movement) {
+        if(!player || player.health===0){return;}
+        player.movement = movement;
+    });
+    socket.on('shoot', function(){
+        console.log('shoot');
+        if(!player || player.health===0){return;}
+        player.shoot();
+    });
+    socket.on('disconnect', () => {
+        if(!player){return;}
+        delete players[player.id];
+        player = null;
+    });
 });
 
 setInterval(function() {
@@ -201,7 +194,7 @@ setInterval(function() {
             player.angle += 0.1;
         }
     });
-    bullets.forEach((bullet) =>{
+    Object.values(bullets).forEach((bullet) =>{
         if(! bullet.move(10)){
             bullet.remove();
             return;
@@ -215,7 +208,7 @@ setInterval(function() {
                }
            } 
         });
-        walls.forEach((wall) => {
+        Object.values(walls).forEach((wall) => {
            if(bullet.intersect(wall)){
                bullet.remove();
            }
@@ -224,3 +217,13 @@ setInterval(function() {
     io.sockets.emit('state', players, bullets, walls);
 }, 1000/30);
 
+
+app.use('/static', express.static(__dirname + '/static'));
+
+app.get('/', (request, response) => {
+  response.sendFile(path.join(__dirname, '/static/index.html'));
+});
+
+server.listen(5000, function() {
+  console.log('Starting server on port 5000');
+});

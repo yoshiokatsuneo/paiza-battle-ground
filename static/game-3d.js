@@ -1,67 +1,101 @@
 const socket = io();
-const canvas = document.getElementById('canvas');
+const canvas = $('#canvas')[0];
 canvas.width = 1000;
 canvas.height = 1000;
-// const context = canvas.getContext('2d');
-const img = document.querySelector("#player-image");
+const img = $("#player-image")[0];
 
+var renderer = new THREE.WebGLRenderer({canvas: canvas});
+renderer.setClearColor('skyblue');
+renderer.shadowMap.enabled = true;
+var scene = new THREE.Scene();
+var camera = new THREE.PerspectiveCamera( 100, 1, 0.1, 2000 );
+// camera.position.set(20, 400, 1000);
 
-// const canvas = document.getElementById('canvas');
-// const img = document.querySelector("#player-image");
-img.crossOrigin = "anonymous";
-
-var renderer = new THREE.WebGLRenderer( { canvas: canvas } );
-
-			var scene = new THREE.Scene();
-			var camera = new THREE.PerspectiveCamera( 100, 1, 0.1, 2000 );
-
-			// var renderer = new THREE.WebGLRenderer();
-
-			var geometry = new THREE.BoxGeometry( 30, 30, 30 );
-			var bulletMaterial = new THREE.MeshBasicMaterial( { color: 0x808080 } );
-			var wallMaterial = new THREE.MeshBasicMaterial( { color: 0x000000 } );
-			var texture = new THREE.Texture( img );
-    texture.needsUpdate = true;
-
-      var material = new THREE.MeshBasicMaterial( {
-        map:texture,
-      } );
-
-			var cube = new THREE.Mesh( geometry, material );
-			scene.add( cube );
-			var cube2 =  new THREE.Mesh(new THREE.BoxGeometry(100, 100, 100), material) ;
-			scene.add(cube2);
-			cube2.position.y = 3;
-
-var floorGeometry = new THREE.BoxGeometry(1000, 0, 1000);
-var floorMaterial = new THREE.MeshBasicMaterial({
-    color : 0x00ff00,
-});
+var floorGeometry = new THREE.PlaneGeometry(1000, 1000, 1, 1);
+var floorMaterial = new THREE.MeshLambertMaterial({color : 'lawngreen'});
 var floorMesh = new THREE.Mesh(floorGeometry, floorMaterial);
 floorMesh.position.set(500, 0, 500);
+floorMesh.receiveShadow = true;
+floorMesh.rotation.x = - Math.PI / 2; 
 scene.add(floorMesh);
 
-
-			camera.position.z = 1000;
-			camera.position.y = 200;
-			camera.position.x = 20;
-			
-			cube.position.y = 2;
-
-			var animate = function () {
-				requestAnimationFrame( animate );
-
-				cube.rotation.x += 0.1;
-				cube.rotation.y += 0.1;
-
-				renderer.render( scene, camera );
-			};
-
-			animate();
+var bulletMaterial = new THREE.MeshLambertMaterial( { color: 0x808080 } );
+var wallMaterial = new THREE.MeshLambertMaterial( { color: 'firebrick' } );
+var texture = new THREE.Texture( img );
+texture.needsUpdate = true;
+var playerMaterial = new THREE.MeshLambertMaterial({map: texture});
+const textMaterial = new THREE.MeshBasicMaterial({ color: 0xf39800, side: THREE.DoubleSide });
 
 
+/*			var cube2 =  new THREE.Mesh(new THREE.BoxGeometry(100, 100, 100), material) ;
+			scene.add(cube2);
+			cube2.position.y = 3;
+*/
+
+// light
+light = new THREE.DirectionalLight(0xffffff, 1);
+light.position.set(-100, 300, -100);
+light.castShadow = true;
+
+    light.shadow.camera.left = -200000;
+    light.shadow.camera.right = 200000;
+    light.shadow.camera.top = 200000;
+    light.shadow.camera.bottom = -200000;
+    light.shadow.mapSize.width = 2048;     //追加
+light.shadow.mapSize.height = 2048;   //追加
+        shadowHelper = new THREE.CameraHelper(light.shadow.camera);
+    scene.add(shadowHelper);
 
 
+// light.rotation.x = 1;
+scene.add(light);
+ambient = new THREE.AmbientLight(0x808080);
+scene.add(ambient);
+
+
+
+
+//			cube.position.y = 2;
+
+
+    loader = new THREE.FontLoader();
+    let font;
+    loader.load('/static/helvetiker_bold.typeface.json', function(font_) {
+        font = font_;
+        /*
+     const  text = new THREE.Mesh(
+        new THREE.TextGeometry('dotinstall!', {
+          font: font,
+          // fontName: 'serif',
+          size: 100,
+          height: 1
+        }),
+        new THREE.MeshBasicMaterial({ color: 0xf39800, side: THREE.DoubleSide })
+      );
+      text.position.set(100, 300, 0);
+      scene.add(text);
+      */
+    });
+
+    
+
+        
+
+    // helper
+    /*
+    const gridHelper = new THREE.GridHelper(200, 50);
+    scene.add(gridHelper);
+    const axisHelper = new THREE.AxisHelper(2000);
+    scene.add(axisHelper);
+    const lightHelper = new THREE.DirectionalLightHelper(light, 20);
+    scene.add(lightHelper);
+    */
+    
+function animate() {
+	requestAnimationFrame( animate );
+	renderer.render( scene, camera );
+};
+animate();
 
 
 function gameStart(){
@@ -97,46 +131,107 @@ $(document).keyup((event) => {
 });
 
 Meshes = [];
-
-socket.on('state', function(players, bullets, walls) {
-    Meshes.forEach((mesh) => {
-        mesh.geometry.dispose();
-        scene.remove(mesh);
+socket.on('state', (players, bullets, walls) => {
+    Meshes = Meshes.filter((mesh) => {
+        const id = mesh.gameObjectId;
+        if(players[id]){
+            if(mesh.gameObjectType === 'playerText'){
+                players[id].textMesh = mesh;
+            }else{
+                players[id].mesh = mesh;
+            }
+        }else if(bullets[id]){
+            bullets[id].mesh = mesh;
+        }else if(walls[id]){
+            walls[id].mesh = mesh;
+        }else{
+            scene.remove(mesh);
+            mesh.geometry.dispose();
+            return false;
+        }
+        return true;
     });
     Object.values(players).forEach((player) => {
-		const playerMesh = new THREE.Mesh(new THREE.BoxGeometry(100, 100, 100), material);
-		Meshes.push(playerMesh);
-		scene.add(playerMesh);
-		playerMesh.position.x = player.x;
-		playerMesh.position.y = 10;
-		playerMesh.position.z = player.y;
-		playerMesh.rotation.y = player.angle;
+        let mesh = player.mesh;
+        if(!mesh){
+    		mesh = new THREE.Mesh(new THREE.BoxGeometry(player.width, player.width, player.height), playerMaterial);
+    		mesh.gameObjectId = player.id;
+    		mesh.castShadow = true;
+    		Meshes.push(mesh);
+    		scene.add(mesh);
+        }
+        
+        mesh.position.set(player.x + player.width/2, player.width/2, player.y + player.height/2);
+		mesh.rotation.y = - player.angle;
 
-        if(player.id === socket.id){
-			camera.position.x = player.x; // - 300 * Math.cos(player.angle);
-			camera.position.y = 200;
-			camera.position.z = player.y; // - 300 * Math.sin(player.angle);
+        if(player.socketId === socket.id){
+			camera.position.set(
+			    player.x + player.width/2 - 150 * Math.cos(player.angle),
+			    200,
+                player.y + player.height/2 - 150 * Math.sin(player.angle)
+            );
+			// camera.rotation.z = 0.4;
 			camera.rotation.y = - player.angle - Math.PI/2;
-			console.log('player.angle=', player.angle, camera.position.x, camera.position.z);
+			// console.log('player.angle=', player.angle, camera.position.x, camera.position.z);
+
+            /*
+            context.save();
+            context.font = '30px Bold Arial';
+            // context.fillText('You', player.x, player.y - 20);
+            context.fillText(player.point + ' point', 20, 40);
+            context.restore();
+            */
+        }
+
+        if(font){
+            let mesh = player.textMesh;
+            if(mesh && mesh.health !== player.health){
+                scene.remove(mesh);
+                mesh.geometry.dispose();
+                Meshes.splice(Meshes.indexOf(mesh), 1);
+                mesh = null;
+            }
+            if(!mesh){
+                mesh = new THREE.Mesh(
+                    new THREE.TextGeometry('*'.repeat(player.health),
+                        {font: font, size: 10, height: 1}),
+                        textMaterial,
+                );
+                mesh.gameObjectId = player.id;
+                mesh.gameObjectType = 'playerText';
+                mesh.health = player.health;
+                Meshes.push(mesh);
+                scene.add(mesh);
+            }
+            mesh.position.set(player.x + player.width/2, 100, player.y + player.height/2);
+            mesh.rotation.y = - player.angle + Math.PI/2;
         }
 
 
     });
-    bullets.forEach((bullet) => {
-		const mesh = new THREE.Mesh(new THREE.BoxGeometry(100, 100, 100), bulletMaterial);
-		Meshes.push(mesh);
-		scene.add(mesh);
-		mesh.position.x = bullet.x;
-		mesh.position.y = 10;
-		mesh.position.z = bullet.y;
+    Object.values(bullets).forEach((bullet) => {
+        let mesh = bullet.mesh;
+        if(!mesh){
+            mesh = new THREE.Mesh(new THREE.BoxGeometry(bullet.width, bullet.width, bullet.height), bulletMaterial);
+		    mesh.gameObjectId = bullet.id;
+		    Meshes.push(mesh);
+		    scene.add(mesh);
+        }
+        mesh.position.set(bullet.x + bullet.width/2, 50, bullet.y + bullet.height/2);
     });
-    walls.forEach((wall) => {
-		const mesh = new THREE.Mesh(new THREE.BoxGeometry(wall.width, 100, wall.height), wallMaterial);
-		Meshes.push(mesh);
-		scene.add(mesh);
-		mesh.position.x = wall.x;
-		mesh.position.y = 10;
-		mesh.position.z = wall.y;
+    Object.values(walls).forEach((wall) => {
+        let mesh = wall.mesh;
+        if(!mesh){
+    		mesh = new THREE.Mesh(new THREE.BoxGeometry(wall.width, 100, wall.height), wallMaterial);
+    		mesh.gameObjectId = wall.id;
+    		mesh.castShadow = true;
+    		mesh.receiveShadow = true;
+    		Meshes.push(mesh);
+    		scene.add(mesh);
+        }
+		mesh.position.x = wall.x + wall.width/2;
+		mesh.position.y = 50;
+		mesh.position.z = wall.y + wall.height/2;
     });
 });
 

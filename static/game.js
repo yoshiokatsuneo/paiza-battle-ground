@@ -68,12 +68,12 @@ socket.on('state', function(players, bullets, walls) {
             context.restore();
         }
     });
-    bullets.forEach((bullet) => {
+    Object.values(bullets).forEach((bullet) => {
         context.beginPath();
         context.arc(bullet.x, bullet.y, bullet.width/2, 0, 2 * Math.PI);
         context.stroke();
     });
-    walls.forEach((wall) => {
+    Object.values(walls).forEach((wall) => {
         context.fillStyle = 'black';
         context.fillRect(wall.x, wall.y, wall.width, wall.height);
     });
