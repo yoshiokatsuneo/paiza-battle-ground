@@ -12,7 +12,7 @@ const io = socketIO(server);
 const FIELD_WIDTH = 1000, FIELD_HEIGHT = 1000;
 class GameObject{
     constructor(obj={}){
-        this.id = GameObject.idCounter++;
+        this.id = Math.floor(Math.random()*1000000000);
         this.x = obj.x;
         this.y = obj.y;
         this.width = obj.width;
@@ -54,12 +54,12 @@ class GameObject{
         return {id: this.id, x: this.x, y: this.y, width: this.width, height: this.height, angle: this.angle};
     }
 };
-GameObject.idCounter=1000;
 
 class Player extends GameObject{
     constructor(obj={}){
         super(obj);
         this.socketId = obj.socketId;
+        this.nickname = obj.nickname;
         this.width = 80;
         this.height = 80;
         this.health = this.maxHealth = 10;
@@ -95,10 +95,10 @@ class Player extends GameObject{
     }
     remove(){
         delete players[this.id];
-        io.to(this.id).emit('dead');
+        io.to(this.socketId).emit('dead');
     }
     toJSON(){
-        return Object.assign(super.toJSON(), {health: this.health, maxHealth: this.maxHealth, socketId: this.socketId, point: this.point});
+        return Object.assign(super.toJSON(), {health: this.health, maxHealth: this.maxHealth, socketId: this.socketId, point: this.point, nickname: this.nickname});
     }
 };
 class Bullet extends GameObject{
@@ -129,7 +129,7 @@ class BotPlayer extends Player{
         super.remove();
         clearInterval(this.timer);
         setTimeout(() => {
-            const bot = new BotPlayer();
+            const bot = new BotPlayer({nickname: this.nickname});
             players[bot.id] = bot;
         }, 3000);
     }
@@ -151,14 +151,15 @@ for(let i=0; i<3; i++){
     walls[wall.id] = wall;
 }
 
-const bot = new BotPlayer();
+const bot = new BotPlayer({nickname: 'bot'});
 players[bot.id] = bot;
 
 io.on('connection', function(socket) {
-let player = null;
-    socket.on('game-start', () => {
+    let player = null;
+    socket.on('game-start', (config) => {
         player = new Player({
             socketId: socket.id,
+            nickname: config.nickname,
         });
         players[player.id] = player;
     });
