@@ -1,43 +1,71 @@
 'use strict';
 
 const socket = io();
-const canvas = document.getElementById('canvas');
-canvas.width = 1000;
-canvas.height = 1000;
+const canvas = $('#canvas-2d')[0];
 const context = canvas.getContext('2d');
-const img = document.querySelector("#player-image");
-
+const playerImage = $('#player-image')[0];
 
 function gameStart(){
-    socket.emit('game-start');
-    $("#game-over").hide();
-    $("#start-button").hide();
+    socket.emit('game-start', {nickname: $("#nickname").val() });
+    $("#start-screen").hide();
 }
 $("#start-button").on('click', gameStart);
 
-const KeyToCommand = {
-    'ArrowUp': 'forward',
-    'ArrowDown': 'back',
-    'ArrowLeft': 'left',
-    'ArrowRight': 'right',
-};
-const movement = {};
-$(document).keydown((event) => {
+let movement = {};
+
+$(document).on('keydown keyup', (event) => {
+    const KeyToCommand = {
+        'ArrowUp': 'forward',
+        'ArrowDown': 'back',
+        'ArrowLeft': 'left',
+        'ArrowRight': 'right',
+    };
     const command = KeyToCommand[event.key];
     if(command){
-        movement[command] = true;
+        if(event.type === 'keydown'){
+            movement[command] = true;
+        }else{ /* keyup */
+            movement[command] = false;
+        }
         socket.emit('movement', movement);
     }
-    if(event.key === ' '){
+    if(event.key === ' ' && event.type === 'keydown'){
         socket.emit('shoot');
     }
 });
-$(document).keyup((event) => {
-    const command = KeyToCommand[event.key];
-    if(command){
-        movement[command] = false;
+
+
+const touches = {};
+$('#canvas-2d').on('touchstart', (event)=>{
+    // console.log('touchstart', event, event.touches); 
+    socket.emit('shoot');
+    movement.forward = true;
+    Array.from(event.changedTouches).forEach((touch) => {
+        touches[touch.identifier] = {pageX: touch.pageX, pageY: touch.pageY};
+    });
+    event.preventDefault();
+    console.log('touches', touches, event.touches);
+});
+$('#canvas-2d').on('touchmove', (event)=>{
+    movement.right = false;
+    movement.left = false;
+    Array.from(event.touches).forEach((touch) => {
+        const startTouch = touches[touch.identifier];
+        movement.right |= touch.pageX - startTouch.pageX > 30;
+        movement.left |= touch.pageX - startTouch.pageX < -30;
+    });
+    socket.emit('movement', movement);
+    event.preventDefault();
+});
+$('#canvas-2d').on('touchend', (event)=>{
+    Array.from(event.changedTouches).forEach((touch) => {
+        delete touches[touch.identifier];
+    });
+    if(Object.keys(touches).length === 0){
+        movement = {};
         socket.emit('movement', movement);
     }
+    event.preventDefault();
 });
 
 socket.on('state', function(players, bullets, walls) {
@@ -50,6 +78,8 @@ socket.on('state', function(players, bullets, walls) {
 
     Object.values(players).forEach((player) => {
         context.save();
+        context.font = '20px Bold Arial';
+        context.fillText(player.nickname, player.x, player.y + player.height + 25);
         context.font = '10px Bold Arial';
         context.fillStyle = "gray";
         context.fillText('♥'.repeat(player.maxHealth), player.x, player.y + player.height + 10);
@@ -57,10 +87,10 @@ socket.on('state', function(players, bullets, walls) {
         context.fillText('♥'.repeat(player.health), player.x, player.y + player.height + 10);
         context.translate(player.x + player.width/2, player.y + player.height/2);
         context.rotate(player.angle);
-        context.drawImage(img, 0, 0, img.width, img.height, -player.width/2, -player.height/2, player.width, player.height);
+        context.drawImage(playerImage, 0, 0, playerImage.width, playerImage.height, -player.width/2, -player.height/2, player.width, player.height);
         context.restore();
         
-        if(player.id === socket.id){
+        if(player.socketId === socket.id){
             context.save();
             context.font = '30px Bold Arial';
             context.fillText('You', player.x, player.y - 20);
@@ -80,10 +110,5 @@ socket.on('state', function(players, bullets, walls) {
 });
 
 socket.on('dead', () => {
-    $("#game-over").show();
-    $("#start-button").show();
-});
-
-socket.on('connect', () => {
-    gameStart();
+    $("#start-screen").show();
 });

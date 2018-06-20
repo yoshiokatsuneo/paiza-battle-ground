@@ -37,18 +37,14 @@ class GameObject{
         }
         return !collision;
     }
-    intersectWalls(){
-        return Object.values(walls).some((wall) => {
-            if(this.intersect(wall)){
-                return true;
-            }
-        });
-    }
     intersect(obj){
         return (this.x <= obj.x + obj.width) &&
             (this.x + this.width >= obj.x) &&
             (this.y <= obj.y + obj.height) &&
             (this.y + this.height >= obj.y);
+    }
+    intersectWalls(){
+        return Object.values(walls).some((wall) => this.intersect(wall));
     }
     toJSON(){
         return {id: this.id, x: this.x, y: this.y, width: this.width, height: this.height, angle: this.angle};
@@ -179,7 +175,7 @@ io.on('connection', function(socket) {
     });
 });
 
-setInterval(function() {
+setInterval(() => {
     Object.values(players).forEach((player) => {
         const movement = player.movement;
         if(movement.forward){
@@ -209,11 +205,6 @@ setInterval(function() {
                }
            } 
         });
-        Object.values(walls).forEach((wall) => {
-           if(bullet.intersect(wall)){
-               bullet.remove();
-           }
-        });
     });
     io.sockets.emit('state', players, bullets, walls);
 }, 1000/30);
@@ -225,6 +216,6 @@ app.get('/', (request, response) => {
   response.sendFile(path.join(__dirname, '/static/index.html'));
 });
 
-server.listen(5000, function() {
-  console.log('Starting server on port 5000');
+server.listen(3000, function() {
+  console.log('Starting server on port 3000');
 });

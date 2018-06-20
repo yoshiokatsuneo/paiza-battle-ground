@@ -55,10 +55,10 @@ loader.load('/static/helvetiker_bold.typeface.json', function(font_) {
         
 
 // Helpers
-scene.add(new THREE.CameraHelper(light.shadow.camera));
-scene.add(new THREE.GridHelper(200, 50));
-scene.add(new THREE.AxisHelper(2000));
-scene.add(new THREE.DirectionalLightHelper(light, 20));
+// scene.add(new THREE.CameraHelper(light.shadow.camera));
+// scene.add(new THREE.GridHelper(200, 50));
+// scene.add(new THREE.AxisHelper(2000));
+// scene.add(new THREE.DirectionalLightHelper(light, 20));
 
 function animate() {
 	requestAnimationFrame( animate );
@@ -73,30 +73,62 @@ function gameStart(){
 }
 $("#start-button").on('click', gameStart);
 
-const KeyToCommand = {
-    'ArrowUp': 'forward',
-    'ArrowDown': 'back',
-    'ArrowLeft': 'left',
-    'ArrowRight': 'right',
-};
-const movement = {};
-$(document).keydown((event) => {
+let movement = {};
+$(document).on('keydown keyup', (event) => {
+    const KeyToCommand = {
+        'ArrowUp': 'forward',
+        'ArrowDown': 'back',
+        'ArrowLeft': 'left',
+        'ArrowRight': 'right',
+    };
     const command = KeyToCommand[event.key];
     if(command){
-        movement[command] = true;
+        if(event.type === 'keydown'){
+            movement[command] = true;
+        }else{ /* keyup */
+            movement[command] = false;
+        }
         socket.emit('movement', movement);
     }
-    if(event.key === ' '){
+    if(event.key === ' ' && event.type === 'keydown'){
         socket.emit('shoot');
     }
 });
-$(document).keyup((event) => {
-    const command = KeyToCommand[event.key];
-    if(command){
-        movement[command] = false;
+
+const touches = {};
+$('#canvas-2d').on('touchstart', (event)=>{
+    socket.emit('shoot');
+    movement.forward = true;
+    socket.emit('movement', movement);
+    Array.from(event.changedTouches).forEach((touch) => {
+        touches[touch.identifier] = {pageX: touch.pageX, pageY: touch.pageY};
+    });
+    event.preventDefault();
+});
+$('#canvas-2d').on('touchmove', (event)=>{
+    movement.right = false;
+    movement.left = false;
+    Array.from(event.touches).forEach((touch) => {
+        const startTouch = touches[touch.identifier];
+        movement.right |= touch.pageX - startTouch.pageX > 30;
+        movement.left |= touch.pageX - startTouch.pageX < -30;
+    });
+    socket.emit('movement', movement);
+    event.preventDefault();
+});
+$('#canvas-2d').on('touchend', (event)=>{
+    Array.from(event.changedTouches).forEach((touch) => {
+        delete touches[touch.identifier];
+    });
+    if(Object.keys(touches).length === 0){
+        movement = {};
         socket.emit('movement', movement);
     }
+    event.preventDefault();
 });
+
+
+
 
 Meshes = [];
 socket.on('state', (players, bullets, walls) => {
@@ -127,7 +159,6 @@ socket.on('state', (players, bullets, walls) => {
         if(font){
             if(!playerMesh.getObjectByName('nickname')){
                 console.log('create nickname mesh');
-
                 mesh = new THREE.Mesh(
                     new THREE.TextGeometry(player.nickname,
                         {font: font, size: 10, height: 1}),
@@ -174,7 +205,7 @@ socket.on('state', (players, bullets, walls) => {
 			camera.rotation.set(0, - player.angle - Math.PI/2, 0);
 			
 			// Write to 2D canvas
-            context.clearRect(0, 0, canvas.width, canvas.height);
+            context.clearRect(0, 0, canvas2d.width, canvas2d.height);
             context.font = '30px Bold Arial';
             context.fillText(player.point + ' point', 20, 40);
         }
