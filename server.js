@@ -7,6 +7,7 @@ const socketIO = require('socket.io');
 const app = express();
 const server = http.Server(app);
 const io = socketIO(server);
+const yargs = require('yargs').argv;
 
 
 const FIELD_WIDTH = 1000, FIELD_HEIGHT = 1000;
@@ -49,7 +50,7 @@ class GameObject{
     toJSON(){
         return {id: this.id, x: this.x, y: this.y, width: this.width, height: this.height, angle: this.angle};
     }
-};
+}
 
 class Player extends GameObject{
     constructor(obj={}){
@@ -96,7 +97,7 @@ class Player extends GameObject{
     toJSON(){
         return Object.assign(super.toJSON(), {health: this.health, maxHealth: this.maxHealth, socketId: this.socketId, point: this.point, nickname: this.nickname});
     }
-};
+}
 class Bullet extends GameObject{
     constructor(obj){
         super(obj);
@@ -108,7 +109,7 @@ class Bullet extends GameObject{
         delete this.player.bullets[this.id];
         delete bullets[this.id];
     }
-};
+}
 class BotPlayer extends Player{
     constructor(obj){
         super(obj);
@@ -129,9 +130,9 @@ class BotPlayer extends Player{
             players[bot.id] = bot;
         }, 3000);
     }
-};
+}
 class Wall extends GameObject{
-};
+}
 
 let players = {};
 let bullets = {};
@@ -216,6 +217,7 @@ app.get('/', (request, response) => {
   response.sendFile(path.join(__dirname, '/static/index.html'));
 });
 
-server.listen(3000, function() {
-  console.log('Starting server on port 3000');
+const port = parseInt(yargs.port) || 3000;
+server.listen(port, () => {
+  console.log(`Starting server on port ${port}`);
 });

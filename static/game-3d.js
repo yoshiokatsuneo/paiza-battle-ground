@@ -4,17 +4,17 @@ const context = canvas2d.getContext('2d');
 const canvas3d = $('#canvas-3d')[0];
 const playerImage = $("#player-image")[0];
 
-var renderer = new THREE.WebGLRenderer({canvas: canvas3d});
+const renderer = new THREE.WebGLRenderer({canvas: canvas3d});
 renderer.setClearColor('skyblue');
 renderer.shadowMap.enabled = true;
 
-var scene = new THREE.Scene();
-var camera = new THREE.PerspectiveCamera( 100, 1, 0.1, 2000 );
+const scene = new THREE.Scene();
+const camera = new THREE.PerspectiveCamera( 100, 1, 0.1, 2000 );
 
 // Floor
-var floorGeometry = new THREE.PlaneGeometry(1000, 1000, 1, 1);
-var floorMaterial = new THREE.MeshLambertMaterial({color : 'lawngreen'});
-var floorMesh = new THREE.Mesh(floorGeometry, floorMaterial);
+const floorGeometry = new THREE.PlaneGeometry(1000, 1000, 1, 1);
+const floorMaterial = new THREE.MeshLambertMaterial({color : 'lawngreen'});
+const floorMesh = new THREE.Mesh(floorGeometry, floorMaterial);
 floorMesh.position.set(500, 0, 500);
 floorMesh.receiveShadow = true;
 floorMesh.rotation.x = - Math.PI / 2; 
@@ -24,11 +24,11 @@ camera.position.set(1000, 300, 1000);
 camera.lookAt(floorMesh.position);
 
 // Materials
-var bulletMaterial = new THREE.MeshLambertMaterial( { color: 0x808080 } );
-var wallMaterial = new THREE.MeshLambertMaterial( { color: 'firebrick' } );
-var playerTexture = new THREE.Texture(playerImage);
+const bulletMaterial = new THREE.MeshLambertMaterial( { color: 0x808080 } );
+const wallMaterial = new THREE.MeshLambertMaterial( { color: 'firebrick' } );
+const playerTexture = new THREE.Texture(playerImage);
 playerTexture.needsUpdate = true;
-var playerMaterial = new THREE.MeshLambertMaterial({map: playerTexture});
+const playerMaterial = new THREE.MeshLambertMaterial({map: playerTexture});
 const textMaterial = new THREE.MeshBasicMaterial({ color: 0xf39800, side: THREE.DoubleSide });
 const nicknameMaterial = new THREE.MeshBasicMaterial({ color: 'black', side: THREE.DoubleSide });
 
@@ -63,7 +63,7 @@ loader.load('/static/helvetiker_bold.typeface.json', function(font_) {
 function animate() {
 	requestAnimationFrame( animate );
 	renderer.render( scene, camera );
-};
+}
 animate();
 
 function gameStart(){
@@ -127,10 +127,7 @@ $('#canvas-2d').on('touchend', (event)=>{
     event.preventDefault();
 });
 
-
-
-
-Meshes = [];
+const Meshes = [];
 socket.on('state', (players, bullets, walls) => {
     Object.values(Meshes).forEach((mesh) => {mesh.used = false;});
     
