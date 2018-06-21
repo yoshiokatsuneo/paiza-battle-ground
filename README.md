@@ -1,5 +1,7 @@
 # Paiza Battle Ground
 
+[使うのはJavaScriptとNode.jsだけ！30分で3Dオンライン対戦ゲームを作って公開してみた](https://paiza.hatenablog.com/entry/paizacloud_online_multiplayer_game)
+
 # How to start
 
 ```
@@ -13,6 +15,8 @@ or
 $ npm install
 $ nodemon server.js
 ```
+
+
 
 ## References
 
