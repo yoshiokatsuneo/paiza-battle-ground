@@ -165,7 +165,6 @@ io.on('connection', function(socket) {
         player.movement = movement;
     });
     socket.on('shoot', function(){
-        console.log('shoot');
         if(!player || player.health===0){return;}
         player.shoot();
     });
