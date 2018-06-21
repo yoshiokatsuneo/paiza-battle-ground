@@ -213,7 +213,7 @@ setInterval(() => {
 app.use('/static', express.static(__dirname + '/static'));
 
 app.get('/', (request, response) => {
-  response.sendFile(path.join(__dirname, '/static/index.html'));
+  response.sendFile(path.join(__dirname, '/static/3d.html'));
 });
 
 const port = parseInt(yargs.port) || 3000;

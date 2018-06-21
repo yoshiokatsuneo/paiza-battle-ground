@@ -11,7 +11,6 @@
     <meta name="twitter:card" content="summary_large_image" />
     <script src="/socket.io/socket.io.js"></script>
     <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.3.1/jquery.min.js"></script>
-    <script src="/static/three.js"></script>
   </head>
   <body style="display: flex; flex-direction: column; width: 100%; height: 100%; margin: 0;">
     <div>
@@ -22,18 +21,17 @@
             <div class="fb-share-button" data-href="https://paiza-battle-ground.paiza-user.cloud/" data-layout="button" data-size="small" data-mobile-iframe="true"><a target="_blank" href="https://www.facebook.com/sharer/sharer.php?u=https%3A%2F%2Fdevelopers.facebook.com%2Fdocs%2Fplugins%2F&amp;src=sdkpreparse" class="fb-xfbml-parse-ignore">シェア</a></div>
         </div>
         <div><a href="https://paiza.hatenablog.com/entry/paizacloud_online_multiplayer_game" target=_blank>使うのはJavaScriptとNode.jsだけ！30分で3Dオンライン対戦ゲームを作って公開してみた</a></div>
-    </div> 
+    </div>
     <div style="flex: 1 1; position: relative; overflow:hidden;">
-        <div id="start-screen" style="width:100%; height:100%; display: flex; align-items: center; position:absolute; z-index:10;">
+        <div id="start-screen" style="width:100%; height:100%; display: flex; align-items: center; position:absolute; z-index:10;background-color:rgba(128,128,128,0.5);">
             <div style="text-align: center; width: 100%; font-size: xx-large;">
                 <input type="text" name="nickname" id="nickname" placeholder="Your nickname" autofocus><br/><br/>
                 <button style="font-size: xx-large;" id="start-button">Start</button>
             </div>
         </div>
-        <canvas id="canvas-2d" width="1000" height="1000" style="position: absolute; width: 100%; height: 100%; z-index:2;object-fit: contain;"></canvas>
-        <canvas id="canvas-3d" width="1000" height="1000" style="position: absolute; width: 100%; height: 100%; z-index:1;object-fit: contain;"></canvas>
+        <canvas id="canvas-2d" width="1000" height="1000" style="position:absolute;width:100%;height:100%;object-fit:contain;"></canvas>
     </div>
     <img id="player-image" src="/static/player.gif" style="display: none;">
+    <script src="/static/game.js"></script>
   </body>
-  <script src="/static/game-3d.js"></script>
 </html>
